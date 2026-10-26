@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Password Strength Checker</title>
+    <meta
+      name="description"
+      content="Check whether a password is weak, medium, or strong. The password stays in your browser and is not uploaded."
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#checker">Skip to the checker</a>
+
+    <div class="wrap">
+      <header class="intro">
+        <p class="eyebrow">Classroom cybersecurity tool</p>
+        <h1>Password Strength Checker</h1>
+        <p class="lede">
+          Type a password in the panel, or run the same check in a terminal
+          with <code>python password_checker.py</code>. Either way, the
+          password stays on this computer.
+        </p>
+        <p class="privacy">
+          This page checks the password in your browser. It is not sent to a
+          server, not saved, and not written to a log. Use the sample
+          passwords for screenshots. Do not type a password you actually use.
+        </p>
+      </header>
+
+      <main class="layout">
+        <section class="rules" aria-labelledby="rules-title">
+          <h2 id="rules-title">The five checks</h2>
+          <ol>
+            <li>At least 8 characters. 12 or more is safer.</li>
+            <li>An uppercase letter (A-Z).</li>
+            <li>A lowercase letter (a-z).</li>
+            <li>A number (0-9).</li>
+            <li>A special character such as ! ? # or @.</li>
+          </ol>
+          <p>
+            A space is allowed in a passphrase, but a space does not count as
+            the special character.
+          </p>
+
+          <h2>How the rating is chosen</h2>
+          <dl class="scale">
+            <div>
+              <dt>Weak</dt>
+              <dd>
+                Shorter than 8 characters, found on a short list of commonly
+                leaked passwords, or fewer than 3 checks passed.
+              </dd>
+            </div>
+            <div>
+              <dt>Medium</dt>
+              <dd>
+                3 or 4 checks passed, at least 8 characters, and not a common
+                password.
+              </dd>
+            </div>
+            <div>
+              <dt>Strong</dt>
+              <dd>All 5 checks passed, and not a common password.</dd>
+            </div>
+          </dl>
+          <p class="note">
+            A password can look complicated and still be Weak.
+            <code>Password1!</code> meets every character check, but it is
+            widely known, so this tool rates it Weak.
+          </p>
+        </section>
+
+        <section class="checker" id="checker" aria-labelledby="checker-title">
+          <div class="checker-head">
+            <h2 id="checker-title">Check a password</h2>
+            <p>Nothing you type leaves this page.</p>
+          </div>
+
+          <label for="password-input">Password</label>
+          <div class="entry">
+            <input
+              id="password-input"
+              type="password"
+              autocomplete="off"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
+              data-1p-ignore
+              data-lpignore="true"
+              placeholder="Type a password to test"
+              aria-describedby="feedback character-count"
+            />
+            <button
+              type="button"
+              id="toggle-visibility"
+              aria-pressed="false"
+              aria-controls="password-input"
+            >
+              Show
+            </button>
+          </div>
+          <p id="character-count" class="count">0 characters</p>
+
+          <div class="actions">
+            <button type="button" id="check-button" class="primary">
+              Check strength
+            </button>
+            <button type="button" id="clear-button" class="ghost">Clear</button>
+          </div>
+
+          <p id="feedback" class="feedback" tabindex="-1">
+            Enter a password to see its strength.
+          </p>
+          <p id="live-status" class="visually-hidden" role="status"></p>
+
+          <div
+            class="meter"
+            id="meter"
+            role="img"
+            aria-label="No password yet"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+          <div id="analysis" tabindex="-1" hidden>
+            <p id="flag" class="flag" hidden></p>
+            <p class="rating-row">
+              <span id="rating-text" class="rating"></span>
+              <span id="score-text" class="score"></span>
+            </p>
+            <p id="summary-text" class="summary"></p>
+            <ul id="details" class="details"></ul>
+            <div class="advice">
+              <h3 id="advice-title"></h3>
+              <ul id="advice"></ul>
+            </div>
+          </div>
+
+          <div class="samples">
+            <p>Try a sample. These are not secret. They are here for a demo.</p>
+            <div class="sample-row">
+              <button type="button" data-sample="sunshine">
+                <span>sunshine</span>
+                <small>Weak</small>
+              </button>
+              <button type="button" data-sample="BlueHorse1">
+                <span>BlueHorse1</span>
+                <small>Medium</small>
+              </button>
+              <button type="button" data-sample="Nimbus#Trail82">
+                <span>Nimbus#Trail82</span>
+                <small>Strong</small>
+              </button>
+              <button type="button" data-sample="Password1!">
+                <span>Password1!</span>
+                <small>Weak, common</small>
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          Terminal version: <code>python password_checker.py</code>.
+          The website and the terminal use the same five checks.
+        </p>
+      </footer>
+    </div>
+
+    <noscript>
+      <p class="noscript">
+        This page needs JavaScript to check a password. You can still use the
+        terminal program: python password_checker.py
+      </p>
+    </noscript>
+
+    <script src="checker.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
