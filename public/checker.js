@@ -3,16 +3,31 @@
 /*
   Password rules for the web page.
 
-  These rules match password_checker.py. The test suite compares the
-  two files so a change on one side does not silently change the other.
+  These rules match password_checker.py + config.json. The test suite
+  compares the two sides so a change on one side does not silently
+  change the other.
 
-  The password is only examined in this browser. This file does not
-  send it anywhere. Do not add fetch(), XMLHttpRequest, or a form
-  action that would upload the password.
+  The full password stays in this browser. The only network call is the
+  Have I Been Pwned range lookup in hibp.js, which sends a 5-character
+  SHA-1 prefix only.
 */
 
-// Keep this number the same as MAX_PASSWORD_LENGTH in password_checker.py.
-const MAX_PASSWORD_LENGTH = 128;
+const DEFAULT_SETTINGS = {
+  min_length: 8,
+  recommended_length: 12,
+  max_length: 128,
+  weak_max_passed_checks: 2,
+  moderate_min_passed_checks: 3,
+  strong_min_passed_checks: 5,
+  require_uppercase: true,
+  require_lowercase: true,
+  require_number: true,
+  require_special: true,
+  use_local_common_list: true,
+  hibp_enabled: true,
+  hibp_timeout_seconds: 10,
+  hibp_api_url: "https://api.pwnedpasswords.com/range/",
+};
 
 // Keep this list in the same order as COMMON_PASSWORDS in password_checker.py.
 const COMMON_PASSWORDS = [
@@ -47,10 +62,28 @@ const COMMON_PASSWORDS = [
   "654321",
 ];
 
-// A lookup object makes the common-password test a single check.
 const COMMON_PASSWORD_SET = {};
 for (const commonPassword of COMMON_PASSWORDS) {
   COMMON_PASSWORD_SET[commonPassword] = true;
+}
+
+let activeSettings = Object.assign({}, DEFAULT_SETTINGS);
+
+function mergeSettings(loaded) {
+  const settings = Object.assign({}, DEFAULT_SETTINGS);
+  if (loaded && typeof loaded === "object") {
+    Object.keys(DEFAULT_SETTINGS).forEach(function (key) {
+      if (Object.prototype.hasOwnProperty.call(loaded, key)) {
+        settings[key] = loaded[key];
+      }
+    });
+  }
+  activeSettings = settings;
+  return settings;
+}
+
+function getSettings() {
+  return activeSettings;
 }
 
 function characterCount(password) {
@@ -76,8 +109,19 @@ function emptyChecks() {
   };
 }
 
-function validatePassword(password) {
-  // Same order as the Python version. Spaces-only wins over "too long".
+function emptyBreach() {
+  return {
+    checked: false,
+    compromised: false,
+    breach_count: 0,
+    error: "",
+    prefix: "",
+  };
+}
+
+function validatePassword(password, settings) {
+  const options = settings || activeSettings;
+
   if (typeof password !== "string") {
     return "Please enter a password made of text.";
   }
@@ -87,12 +131,12 @@ function validatePassword(password) {
   }
 
   const length = characterCount(password);
-  if (length > MAX_PASSWORD_LENGTH) {
+  if (length > options.max_length) {
     return (
       "That input is " +
       charactersLabel(length) +
       ". Please use " +
-      MAX_PASSWORD_LENGTH +
+      options.max_length +
       " or fewer."
     );
   }
@@ -105,8 +149,6 @@ function isNumber(character) {
 }
 
 function isLetter(character) {
-  // A letter has a different uppercase and lowercase form.
-  // Digits and symbols do not, so they are not letters.
   return character.toLowerCase() !== character.toUpperCase();
 }
 
@@ -119,7 +161,6 @@ function isLowercaseLetter(character) {
 }
 
 function isSpecialCharacter(character) {
-  // Letters and numbers do not count. Spaces do not count.
   if (isLetter(character) || isNumber(character)) {
     return false;
   }
@@ -179,9 +220,10 @@ function isRepeatedCharacter(password) {
   return true;
 }
 
-function collectChecks(password) {
+function collectChecks(password, settings) {
+  const options = settings || activeSettings;
   return {
-    length: characterCount(password) >= 8,
+    length: characterCount(password) >= options.min_length,
     uppercase: containsUppercase(password),
     lowercase: containsLowercase(password),
     number: containsNumber(password),
@@ -200,17 +242,23 @@ function countPassedChecks(checks) {
   return total;
 }
 
-function decideRating(score, checks, isCommon) {
-  if (isCommon || !checks.length || score <= 2) {
+function decideRating(score, checks, isCommon, settings) {
+  const options = settings || activeSettings;
+  if (isCommon || !checks.length || score <= options.weak_max_passed_checks) {
     return "Weak";
   }
-  if (score >= 5) {
+  if (score >= options.strong_min_passed_checks) {
     return "Strong";
   }
-  return "Medium";
+  if (score >= options.moderate_min_passed_checks) {
+    return "Moderate";
+  }
+  return "Weak";
 }
 
-function buildSummary(score, checks, isCommon) {
+function buildSummary(score, checks, isCommon, rating, settings) {
+  const options = settings || activeSettings;
+
   if (isCommon) {
     return (
       "This password is on a short list of commonly leaked passwords, " +
@@ -222,22 +270,23 @@ function buildSummary(score, checks, isCommon) {
     return (
       score +
       " of 5 checks passed, but the password is shorter than " +
-      "8 characters, so the rating is Weak. A short password is easy to guess."
+      options.min_length +
+      " characters, so the rating is Weak. A short password is easy to guess."
     );
   }
 
-  if (score === 5) {
+  if (rating === "Strong") {
     return (
-      "All 5 checks passed, and this is not a common password, " +
+      "All required checks passed, and this is not a common password, " +
       "so the rating is Strong."
     );
   }
 
-  if (score >= 3) {
+  if (rating === "Moderate") {
     return (
       score +
-      " of 5 checks passed, so the rating is Medium. " +
-      "A Medium password still has gaps."
+      " of 5 checks passed, so the rating is Moderate. " +
+      "A Moderate password still has gaps."
     );
   }
 
@@ -248,15 +297,29 @@ function buildSummary(score, checks, isCommon) {
   );
 }
 
-function lengthDetail(password, passed) {
+function lengthDetail(password, passed, settings) {
+  const options = settings || activeSettings;
   const counted = charactersLabel(characterCount(password));
   if (passed) {
-    return "Length is " + counted + ", which meets the minimum of 8.";
+    return (
+      "Length is " +
+      counted +
+      ", which meets the minimum of " +
+      options.min_length +
+      "."
+    );
   }
-  return "Length is " + counted + ". At least 8 are required.";
+  return (
+    "Length is " +
+    counted +
+    ". At least " +
+    options.min_length +
+    " are required."
+  );
 }
 
-function buildDetails(password, checks) {
+function buildDetails(password, checks, settings) {
+  const options = settings || activeSettings;
   let uppercaseText;
   if (checks.uppercase) {
     uppercaseText = "Contains an uppercase letter.";
@@ -286,7 +349,10 @@ function buildDetails(password, checks) {
   }
 
   return [
-    { passed: checks.length, text: lengthDetail(password, checks.length) },
+    {
+      passed: checks.length,
+      text: lengthDetail(password, checks.length, options),
+    },
     { passed: checks.uppercase, text: uppercaseText },
     { passed: checks.lowercase, text: lowercaseText },
     { passed: checks.number, text: numberText },
@@ -294,12 +360,32 @@ function buildDetails(password, checks) {
   ];
 }
 
-function buildSuggestions(password, checks, rating, isCommon) {
-  if (rating === "Strong") {
+function formatBreachCount(count) {
+  const number = Number(count) || 0;
+  const labeled = number.toLocaleString("en-US");
+  if (number === 1) {
+    return labeled + " time";
+  }
+  return labeled + " times";
+}
+
+function buildSuggestions(password, checks, rating, isCommon, compromised, settings) {
+  const options = settings || activeSettings;
+
+  if (rating === "Strong" && !compromised) {
     return [];
   }
 
   const suggestions = [];
+
+  if (compromised) {
+    suggestions.push(
+      "Stop using this password everywhere. It has appeared in known data breaches."
+    );
+    suggestions.push(
+      "Create a brand-new password that you have never used before."
+    );
+  }
 
   if (isCommon) {
     suggestions.push("Choose a different password. This one is widely known.");
@@ -307,25 +393,33 @@ function buildSuggestions(password, checks, rating, isCommon) {
 
   if (!checks.length) {
     suggestions.push(
-      "Make the password at least 8 characters long. 12 or more is safer."
+      "Make the password at least " +
+        options.min_length +
+        " characters long. " +
+        options.recommended_length +
+        " or more is safer."
     );
-  } else if (characterCount(password) < 12) {
-    suggestions.push("Make it longer. Aim for 12 characters or more.");
+  } else if (characterCount(password) < options.recommended_length) {
+    suggestions.push(
+      "Make it longer. Aim for " +
+        options.recommended_length +
+        " characters or more."
+    );
   }
 
-  if (!checks.uppercase) {
+  if (options.require_uppercase && !checks.uppercase) {
     suggestions.push("Add at least one uppercase letter (A-Z).");
   }
 
-  if (!checks.lowercase) {
+  if (options.require_lowercase && !checks.lowercase) {
     suggestions.push("Add at least one lowercase letter (a-z).");
   }
 
-  if (!checks.number) {
+  if (options.require_number && !checks.number) {
     suggestions.push("Add at least one number (0-9).");
   }
 
-  if (!checks.special) {
+  if (options.require_special && !checks.special) {
     suggestions.push("Add at least one special character, such as ! ? # or @.");
   }
 
@@ -339,8 +433,8 @@ function buildSuggestions(password, checks, rating, isCommon) {
   return suggestions;
 }
 
-function buildHabits(rating) {
-  if (rating !== "Strong") {
+function buildHabits(rating, compromised) {
+  if (rating !== "Strong" || compromised) {
     return [];
   }
   return [
@@ -368,19 +462,24 @@ function rejectedResult(password, error) {
     details: [],
     suggestions: [],
     habits: [],
+    breach: emptyBreach(),
   };
 }
 
-function evaluatePassword(password) {
-  const error = validatePassword(password);
+function evaluatePassword(password, settings) {
+  const options = settings || activeSettings;
+  const error = validatePassword(password, options);
   if (error !== null) {
     return rejectedResult(password, error);
   }
 
-  const checks = collectChecks(password);
+  const checks = collectChecks(password, options);
   const score = countPassedChecks(checks);
-  const isCommon = COMMON_PASSWORD_SET[password.toLowerCase()] === true;
-  const rating = decideRating(score, checks, isCommon);
+  let isCommon = false;
+  if (options.use_local_common_list) {
+    isCommon = COMMON_PASSWORD_SET[password.toLowerCase()] === true;
+  }
+  const rating = decideRating(score, checks, isCommon, options);
 
   return {
     ok: true,
@@ -390,23 +489,64 @@ function evaluatePassword(password) {
     length: characterCount(password),
     checks: checks,
     is_common: isCommon,
-    summary: buildSummary(score, checks, isCommon),
-    details: buildDetails(password, checks),
-    suggestions: buildSuggestions(password, checks, rating, isCommon),
-    habits: buildHabits(rating),
+    summary: buildSummary(score, checks, isCommon, rating, options),
+    details: buildDetails(password, checks, options),
+    suggestions: buildSuggestions(
+      password,
+      checks,
+      rating,
+      isCommon,
+      false,
+      options
+    ),
+    habits: buildHabits(rating, false),
+    breach: emptyBreach(),
   };
 }
 
+function applyBreachResult(result, breach, password, settings) {
+  const options = settings || activeSettings;
+  const next = Object.assign({}, result, {
+    breach: breach || emptyBreach(),
+  });
+
+  if (!breach || !breach.compromised) {
+    return next;
+  }
+
+  next.rating = "Weak";
+  next.summary =
+    "COMPROMISED: this password has appeared " +
+    formatBreachCount(breach.breach_count) +
+    " in Have I Been Pwned breached-password records. " +
+    "Do not use it. The rule-based score was " +
+    result.score +
+    " of 5 before the breach check.";
+  next.suggestions = buildSuggestions(
+    password || "",
+    result.checks,
+    "Weak",
+    result.is_common,
+    true,
+    options
+  );
+  next.habits = [];
+  return next;
+}
+
 const passwordChecker = {
-  MAX_PASSWORD_LENGTH: MAX_PASSWORD_LENGTH,
+  DEFAULT_SETTINGS: DEFAULT_SETTINGS,
   COMMON_PASSWORDS: COMMON_PASSWORDS,
   characterCount: characterCount,
   charactersLabel: charactersLabel,
+  mergeSettings: mergeSettings,
+  getSettings: getSettings,
   evaluatePassword: evaluatePassword,
+  applyBreachResult: applyBreachResult,
+  formatBreachCount: formatBreachCount,
+  emptyBreach: emptyBreach,
 };
 
-// The browser page reads window.passwordChecker.
-// Node tests read module.exports. Either way, the rules are this file.
 if (typeof window !== "undefined") {
   window.passwordChecker = passwordChecker;
 }

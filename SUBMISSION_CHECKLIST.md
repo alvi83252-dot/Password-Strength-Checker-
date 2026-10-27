@@ -7,45 +7,36 @@ Tick each line before you hand the project in.
 - [ ] `python password_checker.py` starts and shows the menu.
 - [ ] `run.bat` starts the same program on Windows.
 - [ ] A weak password (`sunshine`) shows Weak, the failed checks, and suggestions.
-- [ ] A medium password (`BlueHorse1`) shows Medium and what is still missing.
-- [ ] A strong password (`Nimbus#Trail82`) shows Strong and good habits.
-- [ ] `Password1!` shows Weak even though all 5 checks pass, and the reason says it is commonly leaked.
-- [ ] `hello` shows Weak because it is shorter than 8 characters.
-- [ ] An empty password does not crash the program. It prints a clear message.
-- [ ] A menu choice other than 1 or 2 does not crash the program.
-- [ ] Several passwords were checked in one run, without closing and opening the program.
+- [ ] A moderate password (`BlueHorse1`) shows Moderate and what is still missing.
+- [ ] A strong candidate (`Nimbus#Trail82`) shows Strong when not found in HIBP.
+- [ ] `Password1!` or `P@ssw0rd` shows **COMPROMISED** and a breach count from Have I Been Pwned.
+- [ ] An empty password does not crash the program.
+- [ ] Several passwords were checked in one run.
 - [ ] Typing `2` prints the goodbye line and the program ends.
-- [ ] Comments in `password_checker.py` are still clear after any edits.
+- [ ] `config.json` is present and the banner shows the configured thresholds.
 
 ## Website
 
-- [ ] `run_web.bat` serves the page, and the page opens in a browser.
-- [ ] The four sample buttons show the same ratings as the terminal.
-- [ ] **Show** and **Hide** change whether the password is visible.
-- [ ] **Clear** removes the old rating.
-- [ ] **Check strength** on an empty box explains that the password cannot be empty.
-- [ ] While typing a sample, the browser's network panel does not send the password anywhere.
+- [ ] `run_web.bat` serves the page.
+- [ ] Sample buttons show local ratings.
+- [ ] A compromised sample shows the Dark Web radar with **COMPROMISED** and a count.
+- [ ] `public/config.json` matches the terminal thresholds you intend to demo.
 
 ## Tests and docs
 
 - [ ] `python -m unittest discover -s tests -v` passes.
-- [ ] `README.md` is included.
-- [ ] `docs/EXAMPLES.md` is included.
-- [ ] `docs/FOLDER_STRUCTURE.md` matches the files in the repository.
-- [ ] `docs/SCREENSHOTS.md` was followed.
-- [ ] Screenshots are in the `screenshots` folder and use the sample passwords only.
-- [ ] `requirements.txt` is included.
-- [ ] `vercel.json` is included and Output Directory is `public`.
+- [ ] Optional live HIBP test passes with `RUN_LIVE_HIBP=1`.
+- [ ] `README.md`, `docs/EXAMPLES.md`, and `docs/FOLDER_STRUCTURE.md` are included.
+- [ ] Screenshots are in `screenshots/` and use sample passwords only.
 
 ## Deploy
 
 - [ ] The project is pushed to GitHub.
-- [ ] The repository was imported on Vercel with Framework Preset **Other**.
-- [ ] Build Command is empty and Output Directory is `public`.
-- [ ] The live site opens, and `Nimbus#Trail82` is Strong.
-- [ ] The live URL is written here: `_______________________________`
+- [ ] Vercel Framework Preset is **Other**, Output Directory is `public`.
+- [ ] The live site can reach Have I Been Pwned for a hash-prefix lookup.
+- [ ] Live URL: `_______________________________`
 
 ## Secrets
 
-- [ ] No real password appears in the code, the docs, the screenshots, or the terminal scrollback you submit.
-- [ ] No `.env` file or API key is committed.
+- [ ] No real password appears in code, docs, or screenshots.
+- [ ] No HIBP paid API key is needed or committed. The free range API is enough.

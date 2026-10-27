@@ -1,0 +1,52 @@
+Sample run — Password1! through Have I Been Pwned
+=================================================
+
+Command:
+  python password_checker.py
+
+Input:
+  1
+  Password1!
+  2
+
+Output (trimmed to the result):
+
+------------------------------------------------------------------------
+Result
+------------------------------------------------------------------------
+Password    : "Password1!"
+Length      : 10 characters
+Rating      : Weak
+Score       : 5 out of 5
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                   DARK WEB RADAR — Have I Been Pwned
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                          >>> COMPROMISED <<<
+
+This exact password has appeared 584,516 times in known breach dumps.
+It was found in known data-breach password dumps.
+Never use it again.
+
+Why this rating
+COMPROMISED: this password has appeared 584,516 times in Have I Been Pwned
+breached-password records. Do not use it. The rule-based score was 5 of 5
+before the breach check.
+
+  [PASS] Length is 10 characters, which meets the minimum of 8.
+  [PASS] Contains an uppercase letter.
+  [PASS] Contains a lowercase letter.
+  [PASS] Contains a number.
+  [PASS] Contains a special character.
+
+Suggestions
+  - Stop using this password everywhere. It has appeared in known data breaches.
+  - Create a brand-new password that you have never used before.
+  - Choose a different password. This one is widely known.
+  - Make it longer. Aim for 12 characters or more.
+  - Use a unique password for each account, and keep it in a password manager.
+------------------------------------------------------------------------
+
+Note: The breach count changes over time as Have I Been Pwned adds data.
+PNG screenshots of other sample runs are in the screenshots/ folder.

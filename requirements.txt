@@ -1,2 +1,5 @@
 # This project uses the Python standard library only.
 # Python 3.8 or newer is required. There is nothing to pip install.
+#
+# The Have I Been Pwned range API is free and does not need an API key.
+# An internet connection is required when hibp_enabled is true in config.json.

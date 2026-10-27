@@ -3,11 +3,14 @@
 /*
   Page behavior for the password checker.
 
-  checker.js decides the rating. This file only reads the text box
-  and updates the page. It does not send the password anywhere.
+  checker.js decides the local strength rating.
+  hibp.js runs the Dark Web radar with k-anonymity.
+  This file only updates the page. The full password is never uploaded.
 */
 
 const checker = window.passwordChecker;
+const hibp = window.hibpClient;
+
 const passwordInput = document.querySelector("#password-input");
 const toggleButton = document.querySelector("#toggle-visibility");
 const checkButton = document.querySelector("#check-button");
@@ -25,17 +28,20 @@ const adviceList = document.querySelector("#advice");
 const meter = document.querySelector("#meter");
 const characterCountText = document.querySelector("#character-count");
 const sampleButtons = document.querySelectorAll("[data-sample]");
+const radar = document.querySelector("#radar");
+const radarStatus = document.querySelector("#radar-status");
+const radarCount = document.querySelector("#radar-count");
+const thresholdNote = document.querySelector("#threshold-note");
+
+let requestToken = 0;
+let debounceTimer = null;
 
 function clearElement(element) {
-  // textContent removes old items without interpreting them as HTML.
   element.textContent = "";
 }
 
-function addTextItem(list, text, className) {
+function addTextItem(list, text) {
   const item = document.createElement("li");
-  if (className) {
-    item.className = className;
-  }
   item.textContent = text;
   list.appendChild(item);
   return item;
@@ -60,7 +66,6 @@ function setMeter(score, rating) {
 }
 
 function hideAnalysis() {
-  // Drop the previous rating so a cleared box cannot keep showing it.
   analysis.hidden = true;
   delete analysis.dataset.rating;
   flag.hidden = true;
@@ -72,11 +77,15 @@ function hideAnalysis() {
   clearElement(detailsList);
   clearElement(adviceList);
   setMeter(0, "");
+  radar.hidden = true;
+  radar.className = "radar";
+  radarStatus.textContent = "";
+  radarCount.textContent = "";
 }
 
 function showIdle() {
   feedback.className = "feedback";
-  feedback.textContent = "Enter a password to see its strength.";
+  feedback.textContent = "Enter a password to see its strength and breach status.";
   liveStatus.textContent = feedback.textContent;
   passwordInput.setAttribute("aria-invalid", "false");
   hideAnalysis();
@@ -99,12 +108,38 @@ function addDetail(detail) {
   mark.textContent = detail.passed ? "Pass" : "Fail";
 
   const text = document.createElement("span");
-  // textContent is deliberate. A password explanation is text, not HTML.
   text.textContent = detail.text;
 
   item.appendChild(mark);
   item.appendChild(text);
   detailsList.appendChild(item);
+}
+
+function showRadar(breach) {
+  radar.hidden = false;
+  radarCount.textContent = "";
+
+  if (breach.compromised) {
+    radar.className = "radar compromised";
+    radarStatus.textContent = "COMPROMISED";
+    radarCount.textContent =
+      "Seen in " +
+      checker.formatBreachCount(breach.breach_count) +
+      " on Have I Been Pwned.";
+    return;
+  }
+
+  if (breach.checked) {
+    radar.className = "radar clear";
+    radarStatus.textContent = "Not found in HIBP range";
+    radarCount.textContent =
+      "This password was not in the returned Have I Been Pwned range.";
+    return;
+  }
+
+  radar.className = "radar pending";
+  radarStatus.textContent = "Breach check unavailable";
+  radarCount.textContent = breach.error || "The Dark Web radar did not finish.";
 }
 
 function showResult(result) {
@@ -114,12 +149,16 @@ function showResult(result) {
   analysis.hidden = false;
   analysis.dataset.rating = result.rating.toLowerCase();
 
-  if (result.is_common) {
+  if (result.breach && result.breach.compromised) {
+    flag.hidden = false;
+    flag.textContent = "Compromised in known data breaches";
+  } else if (result.is_common) {
     flag.hidden = false;
     flag.textContent = "Commonly leaked password";
   } else if (!result.checks.length) {
     flag.hidden = false;
-    flag.textContent = "Shorter than 8 characters";
+    flag.textContent =
+      "Shorter than " + checker.getSettings().min_length + " characters";
   } else {
     flag.hidden = true;
     flag.textContent = "";
@@ -134,7 +173,7 @@ function showResult(result) {
   result.details.forEach(addDetail);
 
   clearElement(adviceList);
-  if (result.rating === "Strong") {
+  if (result.rating === "Strong" && !(result.breach && result.breach.compromised)) {
     adviceTitle.textContent = "Good habits";
     result.habits.forEach(function (habit) {
       addTextItem(adviceList, habit);
@@ -147,15 +186,55 @@ function showResult(result) {
   }
 
   setMeter(result.score, result.rating.toLowerCase());
+  showRadar(result.breach || checker.emptyBreach());
 }
 
 function updateCharacterCount(password) {
   const count = checker.characterCount(password);
   characterCountText.textContent = checker.charactersLabel(count);
-  if (count > checker.MAX_PASSWORD_LENGTH) {
+  if (count > checker.getSettings().max_length) {
     characterCountText.className = "count over";
   } else {
     characterCountText.className = "count";
+  }
+}
+
+async function runCheck(password, options) {
+  const token = ++requestToken;
+  const local = checker.evaluatePassword(password);
+
+  if (!local.ok) {
+    if (token === requestToken) {
+      showError(local.error);
+    }
+    return;
+  }
+
+  // Show the local rating immediately, then fill in the radar.
+  if (token === requestToken) {
+    showResult(
+      Object.assign({}, local, {
+        breach: {
+          checked: false,
+          compromised: false,
+          breach_count: 0,
+          error: "Scanning Have I Been Pwned...",
+          prefix: "",
+        },
+      })
+    );
+  }
+
+  const breach = await hibp.checkPassword(password, checker.getSettings());
+  if (token !== requestToken) {
+    return;
+  }
+
+  const finalResult = checker.applyBreachResult(local, breach, password);
+  showResult(finalResult);
+
+  if (options && options.moveFocus) {
+    moveFocusToResult();
   }
 }
 
@@ -164,8 +243,6 @@ function update(options) {
   updateCharacterCount(password);
 
   if (password === "") {
-    // Clicking Check on an empty box should explain the problem.
-    // Deleting the text should return to the quiet starting hint.
     if (options.fromButton) {
       showError("A password cannot be empty or made of only spaces.");
     } else {
@@ -174,15 +251,7 @@ function update(options) {
     return;
   }
 
-  showResultOrError(checker.evaluatePassword(password));
-}
-
-function showResultOrError(result) {
-  if (!result.ok) {
-    showError(result.error);
-    return;
-  }
-  showResult(result);
+  runCheck(password, options);
 }
 
 function moveFocusToResult() {
@@ -193,29 +262,44 @@ function moveFocusToResult() {
   analysis.focus();
 }
 
+function scheduleCheck() {
+  window.clearTimeout(debounceTimer);
+  debounceTimer = window.setTimeout(function () {
+    update({ fromButton: false, moveFocus: false });
+  }, 550);
+}
+
 passwordInput.addEventListener("input", function () {
-  update({ fromButton: false });
+  updateCharacterCount(passwordInput.value);
+  if (passwordInput.value === "") {
+    requestToken = requestToken + 1;
+    showIdle();
+    return;
+  }
+  scheduleCheck();
 });
 
 passwordInput.addEventListener("keydown", function (event) {
   if (event.key === "Enter") {
     event.preventDefault();
-    update({ fromButton: true });
-    moveFocusToResult();
+    window.clearTimeout(debounceTimer);
+    update({ fromButton: true, moveFocus: true });
   }
 });
 
 checkButton.addEventListener("click", function () {
-  update({ fromButton: true });
-  moveFocusToResult();
+  window.clearTimeout(debounceTimer);
+  update({ fromButton: true, moveFocus: true });
 });
 
 clearButton.addEventListener("click", function () {
+  window.clearTimeout(debounceTimer);
+  requestToken = requestToken + 1;
   passwordInput.value = "";
   passwordInput.type = "password";
   toggleButton.textContent = "Show";
   toggleButton.setAttribute("aria-pressed", "false");
-  update({ fromButton: false });
+  showIdle();
   passwordInput.focus();
 });
 
@@ -230,13 +314,43 @@ toggleButton.addEventListener("click", function () {
 sampleButtons.forEach(function (button) {
   button.addEventListener("click", function () {
     passwordInput.value = button.getAttribute("data-sample");
-    // Samples are easier to read while the letters are visible.
     passwordInput.type = "text";
     toggleButton.textContent = "Hide";
     toggleButton.setAttribute("aria-pressed", "true");
-    update({ fromButton: false });
+    window.clearTimeout(debounceTimer);
+    update({ fromButton: false, moveFocus: false });
     passwordInput.focus();
   });
 });
 
-update({ fromButton: false });
+async function boot() {
+  try {
+    const response = await fetch("config.json", { cache: "no-store" });
+    if (response.ok) {
+      const loaded = await response.json();
+      checker.mergeSettings(loaded);
+    } else {
+      checker.mergeSettings({});
+    }
+  } catch (error) {
+    checker.mergeSettings({});
+  }
+
+  const settings = checker.getSettings();
+  if (thresholdNote) {
+    thresholdNote.textContent =
+      "Thresholds: min length " +
+      settings.min_length +
+      ", Weak if score ≤ " +
+      settings.weak_max_passed_checks +
+      ", Moderate if score ≥ " +
+      settings.moderate_min_passed_checks +
+      ", Strong if score ≥ " +
+      settings.strong_min_passed_checks +
+      ". Edit public/config.json to change them.";
+  }
+
+  showIdle();
+}
+
+boot();

@@ -9,9 +9,13 @@
   --weak: #9d2218;
   --weak-bg: #f8e8e4;
   --medium: #8a4b08;
+  --moderate: #8a4b08;
   --medium-bg: #f8efd8;
+  --moderate-bg: #f8efd8;
   --strong: #0d6b3d;
   --strong-bg: #e5f4eb;
+  --compromised: #7a1020;
+  --compromised-bg: #f6d9de;
   --shadow: 0 18px 40px rgba(70, 48, 20, 0.07);
   --serif: "Palatino Linotype", Palatino, "Iowan Old Style", Georgia, serif;
   --sans: "Segoe UI", "Avenir Next", "Trebuchet MS", sans-serif;
@@ -309,12 +313,65 @@ button:focus-visible,
   background: var(--weak);
 }
 
-.meter[data-rating="medium"] span.on {
-  background: var(--medium);
+.meter[data-rating="medium"] span.on,
+.meter[data-rating="moderate"] span.on {
+  background: var(--moderate);
 }
 
 .meter[data-rating="strong"] span.on {
   background: var(--strong);
+}
+
+.radar {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #f6f1e8;
+}
+
+.radar.compromised {
+  border-color: var(--compromised);
+  background: var(--compromised-bg);
+}
+
+.radar.clear {
+  border-color: #9dcbb0;
+  background: var(--strong-bg);
+}
+
+.radar.pending {
+  background: #f3eee6;
+}
+
+.radar-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.radar-status {
+  margin: 6px 0 2px;
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  line-height: 1.1;
+}
+
+.radar.compromised .radar-status {
+  color: var(--compromised);
+  letter-spacing: 0.04em;
+}
+
+.radar.clear .radar-status {
+  color: var(--strong);
+}
+
+.radar-count {
+  margin: 0;
+  color: var(--ink-soft);
 }
 
 .flag {
@@ -342,8 +399,9 @@ button:focus-visible,
   color: var(--weak);
 }
 
-#analysis[data-rating="medium"] .rating {
-  color: var(--medium);
+#analysis[data-rating="medium"] .rating,
+#analysis[data-rating="moderate"] .rating {
+  color: var(--moderate);
 }
 
 #analysis[data-rating="strong"] .rating {
@@ -399,8 +457,9 @@ button:focus-visible,
   background: var(--weak-bg);
 }
 
-#analysis[data-rating="medium"] .advice {
-  background: var(--medium-bg);
+#analysis[data-rating="medium"] .advice,
+#analysis[data-rating="moderate"] .advice {
+  background: var(--moderate-bg);
 }
 
 #analysis[data-rating="strong"] .advice {

@@ -12,13 +12,16 @@ python password_checker.py
 
 ## Quick reference
 
-| What you type | Where | Rating | Score |
+| What you type | Where | Rating | Score / radar |
 | --- | --- | --- | --- |
 | `sunshine` | password prompt | Weak | 2 of 5 |
-| `BlueHorse1` | password prompt | Medium | 4 of 5 |
-| `Nimbus#Trail82` | password prompt | Strong | 5 of 5 |
-| `Password1!` | password prompt | Weak | 5 of 5 |
+| `BlueHorse1` | password prompt | Moderate | 4 of 5 |
+| `Nimbus#Trail82` | password prompt | Strong* | 5 of 5 |
+| `Password1!` | password prompt | Weak | COMPROMISED + breach count |
+| `P@ssw0rd` | password prompt | Weak | COMPROMISED + breach count |
 | `hello` | password prompt | Weak | 1 of 5 |
+
+\*Strong only when Have I Been Pwned does not already list that password.
 | Enter on an empty line, or spaces only | password prompt | not rated |  |
 | 129 letter `a` characters | password prompt | not rated |  |
 | `9` | menu | not rated |  |
@@ -34,7 +37,7 @@ The same four main samples are buttons on the website: `sunshine`, `BlueHorse1`,
                        Password Strength Checker
 ========================================================================
 
-This program rates a password as Weak, Medium, or Strong.
+This program rates a password as Weak, Moderate, or Strong.
 It checks length, uppercase letters, lowercase letters,
 numbers, and special characters.
 
@@ -90,16 +93,16 @@ Suggestions
 ------------------------------------------------------------------------
 ```
 
-## Medium: BlueHorse1
+## Moderate: BlueHorse1
 
 ```text
 Password  : "BlueHorse1"
 Length    : 10 characters
-Rating    : Medium
+Rating    : Moderate
 Score     : 4 out of 5
 
 Why this rating
-4 of 5 checks passed, so the rating is Medium. A Medium password still has gaps.
+4 of 5 checks passed, so the rating is Moderate. A Moderate password still has gaps.
 
   [PASS] Length is 10 characters, which meets the minimum of 8.
   [PASS] Contains an uppercase letter.
@@ -136,9 +139,9 @@ Good habits
   - Store it in a password manager so you do not have to reuse it.
 ```
 
-## Weak because it is common: Password1!
+## Compromised: Password1!
 
-Every character check passes. The rating is still Weak.
+Every character check can pass. Have I Been Pwned still marks it COMPROMISED.
 
 ```text
 Password  : "Password1!"
@@ -146,8 +149,18 @@ Length    : 10 characters
 Rating    : Weak
 Score     : 5 out of 5
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    DARK WEB RADAR — Have I Been Pwned
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+>>> COMPROMISED <<<
+
+This exact password has appeared 584,516 times in known breach dumps.
+It was found in known data-breach password dumps.
+Never use it again.
+
 Why this rating
-This password is on a short list of commonly leaked passwords, so the rating is Weak. Attackers try these passwords first.
+COMPROMISED: this password has appeared 584,516 times in Have I Been Pwned breached-password records.
 
   [PASS] Length is 10 characters, which meets the minimum of 8.
   [PASS] Contains an uppercase letter.
@@ -156,10 +169,14 @@ This password is on a short list of commonly leaked passwords, so the rating is 
   [PASS] Contains a special character.
 
 Suggestions
+  - Stop using this password everywhere. It has appeared in known data breaches.
+  - Create a brand-new password that you have never used before.
   - Choose a different password. This one is widely known.
   - Make it longer. Aim for 12 characters or more.
   - Use a unique password for each account, and keep it in a password manager.
 ```
+
+The breach count changes over time as Have I Been Pwned adds data.
 
 ## Weak because it is short: hello
 
